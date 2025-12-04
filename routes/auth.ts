@@ -10,7 +10,8 @@ const DEFAULT_PASSWORD = "esol123";
 const ALLOWED_DOMAINS = [
   '@esolglobal.com',
   '@esol.com',
-  '@otomashen.com'
+  '@otomashen.com',
+  '@esglobal.com'
 ];
 
 function validateEmailDomain(email: string): boolean {
@@ -99,7 +100,7 @@ export function registerAuthRoutes(app: Express) {
       
       if (!validateEmailDomain(email)) {
         return res.status(403).json({ 
-          message: "Unauthorized email domain. Please use @esolglobal.com, @esol.com, or @otomashen.com" 
+          message: "Unauthorized email domain. Please use @esolglobal.com, @esol.com, @otomashen.com, or @esglobal.com" 
         });
       }
 
@@ -140,7 +141,7 @@ export function registerAuthRoutes(app: Express) {
       
       if (!validateEmailDomain(email)) {
         return res.status(403).json({ 
-          message: "Unauthorized email domain. Please use @esolglobal.com, @esol.com, or @otomashen.com" 
+          message: "Unauthorized email domain. Please use @esolglobal.com, @esol.com, @otomashen.com, or @esglobal.com" 
         });
       }
 

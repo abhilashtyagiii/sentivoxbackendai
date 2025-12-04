@@ -50,6 +50,15 @@ npm run dev
 
 This backend is configured for deployment on Render. Make sure to set all environment variables in your Render dashboard.
 
+**Frontend URL:** `https://sentivoxai-rga9.onrender.com`
+
+When deploying the backend on Render, set the `FRONTEND_URL` environment variable to:
+```
+FRONTEND_URL=https://sentivoxai-rga9.onrender.com
+```
+
+The backend CORS is already configured to allow requests from `onrender.com` domains, so your frontend should work seamlessly with the backend API.
+
 ## API Endpoints
 
 - `/api/auth/*` - Authentication routes
