@@ -57,4 +57,3 @@ This backend is configured for deployment on Render. Make sure to set all enviro
 - `/api/analysis/*` - Analysis endpoints
 - `/api/candidates/*` - Candidate management
 - `/api/recruiters/*` - Recruiter management
-
