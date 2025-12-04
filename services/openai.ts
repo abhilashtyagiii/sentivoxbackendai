@@ -2,7 +2,38 @@ import OpenAI from "openai";
 import fs from "fs";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Lazy initialization to avoid module-level environment variable access
+let openaiClient: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey.trim() === '') {
+      const errorMsg = 'OPENAI_API_KEY environment variable is required for OpenAI features. The backend can still run without it if you only use Gemini features.';
+      console.warn('⚠️ OPENAI_API_KEY environment variable is missing or empty');
+      console.warn('OpenAI features will not be available. Set OPENAI_API_KEY to enable OpenAI features.');
+      throw new Error(errorMsg);
+    }
+    try {
+      openaiClient = new OpenAI({ apiKey });
+      console.log('✅ OpenAI client initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize OpenAI client:', error);
+      throw new Error('Failed to initialize OpenAI client. Please check your API key.');
+    }
+  }
+  return openaiClient;
+}
+
+// Helper function to check if OpenAI is available
+export function isOpenAIAvailable(): boolean {
+  try {
+    return !!process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim() !== '';
+  } catch {
+    return false;
+  }
+}
 
 export interface VoiceToneSegment {
   timestamp: number;
@@ -32,6 +63,7 @@ export async function extractVoiceTone(audioFilePath: string): Promise<VoiceTone
     const audioReadStream = fs.createReadStream(audioFilePath);
 
     // Transcribe with timestamps for tone analysis
+    const openai = getOpenAIClient();
     const transcription = await openai.audio.transcriptions.create({
       file: audioReadStream,
       model: "whisper-1",
@@ -74,6 +106,7 @@ async function analyzeToneFromText(text: string): Promise<{
   confidence: number;
   pitch: string;
 }> {
+  const openai = getOpenAIClient();
   const response = await openai.chat.completions.create({
     model: "gpt-5",
     messages: [
@@ -104,6 +137,7 @@ async function analyzeToneFromText(text: string): Promise<{
  * Generate embeddings for semantic similarity matching
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
+  const openai = getOpenAIClient();
   const response = await openai.embeddings.create({
     model: "text-embedding-3-large",
     input: text,
@@ -197,6 +231,7 @@ export async function detectAndRedactPII(text: string): Promise<{
   redactedText: string;
   entities: Array<{ type: string; value: string; position: number }>;
 }> {
+  const openai = getOpenAIClient();
   const response = await openai.chat.completions.create({
     model: "gpt-5",
     messages: [
@@ -242,6 +277,7 @@ export async function generateExplainability(
   confidenceLevel: number;
   alternativeInterpretations: string[];
 }> {
+  const openai = getOpenAIClient();
   const response = await openai.chat.completions.create({
     model: "gpt-5",
     messages: [

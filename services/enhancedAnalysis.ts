@@ -7,7 +7,20 @@
 import { storage } from "../storage";
 import type { Interview } from "../schema";
 import { transcribeAudio, analyzeSentiment, analyzeJDRelevance, analyzeFlow, analyzeContentType, generateExplainabilityWithGemini } from "./gemini";
-import { generateEmbedding, analyzeJDWithEmbeddings } from "./openai";
+// OpenAI imports - optional, only used if USE_OPENAI_EMBEDDINGS=true
+// Import dynamically to avoid module-level initialization errors
+let openaiModule: typeof import("./openai") | null = null;
+async function getOpenAIModule() {
+  if (!openaiModule) {
+    try {
+      openaiModule = await import("./openai");
+    } catch (error) {
+      console.warn('OpenAI module not available:', error);
+      return null;
+    }
+  }
+  return openaiModule;
+}
 import { encrypt, decrypt } from "./encryption";
 import { detectPII, redactPII } from "./pii";
 import { buildFlowGraph, detectMissedFollowUps, calculateLogicalScore, identifyConversationBranches } from "./flowGraph";
@@ -129,23 +142,35 @@ export async function processEnhancedInterview(interviewId: string): Promise<voi
 
     // STEP 4 (Optional): Embedding Generation
     if (USE_EMBEDDINGS) {
-      steps[currentStepIndex].status = "processing";
-      await storage.updateInterview(interviewId, { processingSteps: steps });
-      
-      const stepStart4 = Date.now();
-      embeddingAnalysis = await analyzeJDWithEmbeddings(interview.jobDescription, answers);
-      apiCallCount += answers.length + 1;
-      
-      steps[currentStepIndex].status = "complete";
-      steps[currentStepIndex].duration = Date.now() - stepStart4;
-      steps[currentStepIndex].apiCalls = answers.length + 1;
-      steps[currentStepIndex].message = `⚠️ OpenAI Embeddings: ${answers.length + 1} API calls`;
-      
-      await storage.updateInterview(interviewId, {
-        embeddingAnalysis: embeddingAnalysis,
-        processingSteps: steps,
-      });
-      currentStepIndex++;
+      try {
+        steps[currentStepIndex].status = "processing";
+        await storage.updateInterview(interviewId, { processingSteps: steps });
+        
+        const stepStart4 = Date.now();
+        const openai = await getOpenAIModule();
+        if (!openai) {
+          throw new Error('OpenAI module not available');
+        }
+        embeddingAnalysis = await openai.analyzeJDWithEmbeddings(interview.jobDescription, answers);
+        apiCallCount += answers.length + 1;
+        
+        steps[currentStepIndex].status = "complete";
+        steps[currentStepIndex].duration = Date.now() - stepStart4;
+        steps[currentStepIndex].apiCalls = answers.length + 1;
+        steps[currentStepIndex].message = `⚠️ OpenAI Embeddings: ${answers.length + 1} API calls`;
+        
+        await storage.updateInterview(interviewId, {
+          embeddingAnalysis: embeddingAnalysis,
+          processingSteps: steps,
+        });
+        currentStepIndex++;
+      } catch (error) {
+        console.warn('OpenAI embeddings not available, skipping:', error instanceof Error ? error.message : error);
+        steps[currentStepIndex].status = "error";
+        steps[currentStepIndex].message = "OpenAI embeddings skipped (API key not configured)";
+        await storage.updateInterview(interviewId, { processingSteps: steps });
+        currentStepIndex++;
+      }
     }
 
     // STEP 5: PARALLEL - JD Analysis + Flow Analysis + Resume Analysis (if available)
