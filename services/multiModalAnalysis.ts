@@ -3,7 +3,30 @@
  * Combines voice tone analysis with text-based sentiment for comprehensive emotional assessment
  */
 
-import { extractVoiceTone, type VoiceToneSegment } from "./openai";
+// OpenAI imports - optional, only used if available
+// Import dynamically to avoid module-level initialization errors
+let openaiModule: typeof import("./openai") | null = null;
+async function getOpenAIModule() {
+  if (!openaiModule) {
+    try {
+      openaiModule = await import("./openai");
+    } catch (error) {
+      console.warn('OpenAI module not available:', error);
+      return null;
+    }
+  }
+  return openaiModule;
+}
+
+export type VoiceToneSegment = {
+  timestamp: number;
+  speaker: string;
+  text: string;
+  tone: "Positive" | "Neutral" | "Negative";
+  confidence: number;
+  energy: number;
+  pitch: string;
+};
 
 export interface MultiModalSentiment {
   overallScore: number;
@@ -52,8 +75,38 @@ export async function analyzeMultiModalSentiment(
 ): Promise<MultiModalSentiment> {
   console.log("Performing multi-modal sentiment analysis...");
 
-  // Extract voice tone from audio
-  const voiceToneSegments = await extractVoiceTone(audioFilePath);
+  // Extract voice tone from audio (optional, requires OpenAI)
+  let voiceToneSegments: VoiceToneSegment[] = [];
+  try {
+    const openai = await getOpenAIModule();
+    if (openai) {
+      voiceToneSegments = await openai.extractVoiceTone(audioFilePath);
+    } else {
+      console.warn('OpenAI not available, skipping voice tone analysis');
+      // Create empty segments as fallback
+      voiceToneSegments = transcriptSegments.map((seg: any) => ({
+        timestamp: parseFloat(seg.timestamp) || 0,
+        speaker: seg.speaker || "Unknown",
+        text: seg.text || "",
+        tone: "Neutral" as const,
+        confidence: 0.5,
+        energy: 0.5,
+        pitch: "medium",
+      }));
+    }
+  } catch (error) {
+    console.warn('Voice tone extraction failed, using fallback:', error);
+    // Create empty segments as fallback
+    voiceToneSegments = transcriptSegments.map((seg: any) => ({
+      timestamp: parseFloat(seg.timestamp) || 0,
+      speaker: seg.speaker || "Unknown",
+      text: seg.text || "",
+      tone: "Neutral" as const,
+      confidence: 0.5,
+      energy: 0.5,
+      pitch: "medium",
+    }));
+  }
 
   // Map voice tone to text segments
   const mappedSegments = mapVoiceToText(voiceToneSegments, transcriptSegments);
