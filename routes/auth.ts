@@ -21,7 +21,7 @@ function validateEmailDomain(email: string): boolean {
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1)
+  password: z.string().min(1, "Password is required")
 });
 
 const registerSchema = z.object({
