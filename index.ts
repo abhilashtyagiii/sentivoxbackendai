@@ -99,8 +99,15 @@ app.get('/api/health', (req, res) => {
   try {
     await connectToMongoDB();
   } catch (error) {
-    console.error("Failed to connect to MongoDB:", error);
-    console.warn("Application will continue without MongoDB. Please add MONGODB_URI to secrets for full functionality.");
+    console.error("❌ Failed to connect to MongoDB");
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Error:", errorMessage);
+    console.warn("⚠️ Application will continue without MongoDB, but some features may not work.");
+    console.warn("💡 To fix this:");
+    console.warn("   1. Set MONGODB_URI environment variable in your .env file or Render dashboard");
+    console.warn("   2. Format: mongodb+srv://username:password@cluster.mongodb.net/database");
+    console.warn("   3. Or use: mongodb://username:password@host:port/database");
+    console.warn("   4. For local development: mongodb://localhost:27017/sentivox");
   }
 
   registerAuthRoutes(app);
